@@ -1,0 +1,36 @@
+name: prometheus-apt-exporter
+summary: Prometheus apt exporter
+maintainer: Canonical Bootstack
+description: |
+  This exporter query apt and dpkg and export the following metrics
+  the packages installed, upgradable, broken and autoremovable are exported
+  per repository as gauge. The label set depends on the packet manager type.
+  Additionally, pkg_reboot_required is exported to indicate that an 
+  reboot is needed.
+series: []
+tags:
+  - monitoring
+subordinate: true
+requires:
+  juju-info:
+    interface: juju-info
+    scope: container
+provides:
+  scrape:
+    interface: http
+  nrpe-external-master:
+    interface: nrpe-external-master
+    scope: container
+  dashboards:
+    interface: grafana-dashboard
+resources:
+  prometheus-apt-exporter:
+    type: file
+    filename: prometheus-apt-exporter.snap
+    description: Prometheus-apt-exporter snap
+  dashboards:
+    type: file
+    filename: grafana-dashboards.zip
+    description:
+      By default the charm is distributed with a dashboard that gets pushed to grafana.
+      You can override this dashboard with your own
