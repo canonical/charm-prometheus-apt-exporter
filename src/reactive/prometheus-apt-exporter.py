@@ -10,7 +10,6 @@ from zipfile import BadZipFile, ZipFile
 
 from charmhelpers.contrib.charmsupport import nrpe
 from charmhelpers.core import hookenv, host
-
 from charms.layer import snap
 from charms.reactive import (
     endpoint_from_flag,
@@ -24,10 +23,8 @@ from charms.reactive import (
     when_not_all,
 )
 
-
 DASHBOARD_PATH = os.getcwd() + "/files/grafana-dashboards"
 SNAP_NAME = "prometheus-apt-exporter"
-#SVC_NAME = "snap.prometheus-apt-exporter.daemon"
 SVC_NAME = "snap.prometheus-apt-exporter.apt-exporter.service"
 PORT_NUMBER = "8089"
 
@@ -40,7 +37,9 @@ def install_packages():
     config = hookenv.config()
     channel = config.get("snap_channel")
     snap.install(SNAP_NAME, channel=channel, force_dangerous=False)
-    subprocess.check_call(["snap", "connect", "prometheus-apt-exporter:apt-exporter-files"])
+    subprocess.check_call(
+        ["snap", "connect", "prometheus-apt-exporter:apt-exporter-files"]
+    )
     hookenv.status_set("active", "Exporter installed and connected")
     hookenv.open_port(PORT_NUMBER)
     set_state("apt-exporter.installed")
