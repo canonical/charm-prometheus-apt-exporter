@@ -5,6 +5,7 @@ To make contributions to this charm, you'll need a working [development setup](h
 You can use the environments created by `tox` for development:
 
 ```shell
+cd src/
 tox --notest -e unit
 source .tox/unit/bin/activate
 ```
@@ -15,11 +16,11 @@ This project uses `tox` for managing test environments. There are some pre-confi
 that can be used for linting and formatting code when you're preparing contributions to the charm:
 
 ```shell
-tox -e fmt           # update your code according to linting rules
-tox -e lint          # code style
-tox -e unit          # unit tests
-tox -e integration   # integration tests
-tox                  # runs 'lint' and 'unit' environments
+make reformat           # update your code according to linting rules
+make lint               # code style
+make unittests          # unit tests
+make functional         # integration tests
+make test               # runs lint, unit and integration tests
 ```
 
 ## Build the charm
@@ -27,7 +28,7 @@ tox                  # runs 'lint' and 'unit' environments
 Build the charm in this git repository using:
 
 ```shell
-charmcraft pack
+make build
 ```
 
 <!-- You may want to include any contribution/style guidelines in this document>
