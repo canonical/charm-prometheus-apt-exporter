@@ -1,0 +1,37 @@
+name: prometheus-apt-exporter
+summary: Prometheus apt exporter
+maintainer: Canonical Bootstack
+description: |
+  This charm install a Prometheus exporter that queries "apt" and "dpkg" to export following metrics about packages on the unit:
+  * Installed packages
+  * Broken packages
+  * Packages that can be upgraded
+  * Packages that can be auto-removed
+  In addition, a "pkg_reboot_required" metric is exported that indicates whether the system requires a reboot due to the new packages.
+
+tags:
+  - monitoring
+subordinate: true
+requires:
+  juju-info:
+    interface: juju-info
+    scope: container
+provides:
+  scrape:
+    interface: http
+  nrpe-external-master:
+    interface: nrpe-external-master
+    scope: container
+  dashboards:
+    interface: grafana-dashboard
+resources:
+  prometheus-apt-exporter:
+    type: file
+    filename: prometheus-apt-exporter.snap
+    description: Prometheus-apt-exporter snap
+  dashboards:
+    type: file
+    filename: grafana-dashboards.zip
+    description:
+      By default the charm is distributed with a dashboard that gets pushed to grafana.
+      You can override this dashboard with your own

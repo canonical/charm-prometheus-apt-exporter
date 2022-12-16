@@ -1,0 +1,16 @@
+series: {{ series }}
+relations:
+- - ubuntu
+  - prometheus-apt-exporter
+- - prometheus-apt-exporter:scrape
+  - prometheus:target
+
+applications:
+  prometheus:
+    charm: ch:prometheus2
+  ubuntu:
+    charm: ch:ubuntu
+    series: {{ series }}
+    num_units: 3
+  prometheus-apt-exporter:
+    charm: {{ prometheus_apt_exporter_charm }}
