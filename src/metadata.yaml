@@ -2,12 +2,13 @@ name: prometheus-apt-exporter
 summary: Prometheus apt exporter
 maintainer: Canonical Bootstack
 description: |
-  This exporter query apt and dpkg and export the following metrics
-  the packages installed, upgradable, broken and autoremovable are exported
-  per repository as gauge. The label set depends on the packet manager type.
-  Additionally, pkg_reboot_required is exported to indicate that an 
-  reboot is needed.
-series: []
+  This charm install a Prometheus exporter that queries "apt" and "dpkg" to export following metrics about packages on the unit:
+  * Installed packages
+  * Broken packages
+  * Packages that can be upgraded
+  * Packages that can be auto-removed
+  In addition, a "pkg_reboot_required" metric is exported that indicates whether the system requires a reboot due to the new packages.
+
 tags:
   - monitoring
 subordinate: true

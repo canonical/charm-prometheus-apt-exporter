@@ -19,3 +19,8 @@ options:
     type: string
     description: |
       Comma separated list of nagios servicegroups
+  port:
+    default: 8089
+    type: int
+    description: |
+      The port on which the prometheus metrics will be exposed

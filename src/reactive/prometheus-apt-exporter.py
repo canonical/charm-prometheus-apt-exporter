@@ -12,10 +12,10 @@ from charmhelpers.contrib.charmsupport import nrpe
 from charmhelpers.core import hookenv, host
 from charms.layer import snap
 from charms.reactive import (
+    clear_flag,
     endpoint_from_flag,
     hook,
-    remove_state,
-    set_state,
+    set_flag,
     when,
     when_all,
     when_any,
@@ -23,10 +23,9 @@ from charms.reactive import (
     when_not_all,
 )
 
-DASHBOARD_PATH = os.getcwd() + "/files/grafana-dashboards"
+DASHBOARD_PATH = hookenv.charm_dir() + "/files/grafana-dashboards"
 SNAP_NAME = "prometheus-apt-exporter"
 SVC_NAME = "snap.prometheus-apt-exporter.apt-exporter.service"
-PORT_NUMBER = "8089"
 
 
 @when("juju-info.connected")
@@ -36,22 +35,24 @@ def install_packages():
     hookenv.status_set("maintenance", "Installing software")
     config = hookenv.config()
     channel = config.get("snap_channel")
+    port_number = config.get("port")
     snap.install(SNAP_NAME, channel=channel, force_dangerous=False)
     subprocess.check_call(
-        ["snap", "connect", "prometheus-apt-exporter:apt-exporter-files"]
+        ["snap", "connect", "prometheus-apt-exporter:host-apt-contents"]
     )
+    set_http_port()
     hookenv.status_set("active", "Exporter installed and connected")
-    hookenv.open_port(PORT_NUMBER)
-    set_state("apt-exporter.installed")
+    hookenv.open_port(port_number)
+    set_flag("apt-exporter.installed")
 
 
 @hook("upgrade-charm")
 def upgrade():
     """Reset the install state on upgrade, to ensure resource extraction."""
     hookenv.status_set("maintenance", "Charm upgrade in progress")
-    remove_state("apt-exporter.installed")
-    remove_state("apt-exporter.started")
-    remove_state("apt-exporter.dashboard-registered")
+    clear_flag("apt-exporter.installed")
+    clear_flag("apt-exporter.started")
+    clear_flag("apt-exporter.dashboard-registered")
     update_dashboards_from_resource()
     register_grafana_dashboards()
 
@@ -68,7 +69,7 @@ def start_snap():
         hookenv.log("start_snap() Service started")
     else:
         hookenv.status_set("active", "Ready")
-        set_state("apt-exporter.started")
+        set_flag("apt-exporter.started")
         hookenv.log("start_snap() apt-exporter.started")
 
     update_dashboards_from_resource()
@@ -79,28 +80,41 @@ def start_snap():
 @when("config.changed.snap_channel")
 def snap_channel_changed():
     """Remove the state apt.exporter.installed if the snap channel changes."""
-    remove_state("apt-exporter.installed")
-    remove_state("apt-exporter.started")
+    clear_flag("apt-exporter.installed")
+    clear_flag("apt-exporter.started")
+    install_packages()
+
+
+@when("config.changed.port")
+def set_http_port():
+    """Set the port config of the snap to reflect the charm config."""
+    config = hookenv.config()
+    port_number = config.get("port")
+    subprocess.check_call(
+        ["snap", "set", "prometheus-apt-exporter", f"ports.http={port_number}"]
+    )
 
 
 @when_all("apt-exporter.started", "scrape.available")
 def configure_scrape_relation(scrape_service):
     """Connect prometheus to the the exporter for consumption."""
-    scrape_service.configure(PORT_NUMBER)
-    remove_state("apt-exporter.configured")
+    config = hookenv.config()
+    port_number = config.get("port")
+    scrape_service.configure(port_number)
+    clear_flag("apt-exporter.configured")
 
 
 @when("nrpe-external-master.changed")
 def nrpe_changed():
     """Trigger nrpe update."""
-    remove_state("apt-exporter.configured")
+    clear_flag("apt-exporter.configured")
 
 
 @when("apt-exporter.changed")
 def prometheus_changed():
     """Trigger prometheus update."""
-    remove_state("apt-exporter.prometheus_relation_configured")
-    remove_state("apt-exporter.configured")
+    clear_flag("apt-exporter.prometheus_relation_configured")
+    clear_flag("apt-exporter.configured")
 
 
 @when("nrpe-external-master.available")
@@ -114,23 +128,25 @@ def update_nrpe_config(svc):
     hookenv.status_set("maintenance", "Configuring nrpe checks")
 
     hostname = nrpe.get_nagios_hostname()
+    config = hookenv.config()
+    port_number = config.get("port")
     nrpe_setup = nrpe.NRPE(hostname=hostname)
     nrpe_setup.add_check(
         shortname="prometheus_apt_exporter_http",
-        check_cmd="check_http -I 127.0.0.1 -p {} -u / -e 200".format(PORT_NUMBER),
+        check_cmd="check_http -I 127.0.0.1 -p {} -u / -e 200".format(port_number),
         description="Prometheus apt Exporter HTTP check",
     )
     nrpe_setup.write()
     hookenv.status_set("active", "ready")
-    set_state("apt-exporter.configured")
+    set_flag("apt-exporter.configured")
 
 
 @when("apt-exporter.installed")
 @when_not("juju-info.available")
 def remove_apt_exporter():
     """Uninstall the snap."""
-    remove_state("apt-exporter.installed")
-    remove_state("apt-exporter.started")
+    clear_flag("apt-exporter.installed")
+    clear_flag("apt-exporter.started")
     snap.remove(SNAP_NAME)
 
 
@@ -141,7 +157,7 @@ def remove_nrpe_check():
     hostname = nrpe.get_nagios_hostname()
     nrpe_setup = nrpe.NRPE(hostname=hostname)
     nrpe_setup.remove_check(shortname="prometheus_apt_exporter_http")
-    remove_state("apt-exporter.configured")
+    clear_flag("apt-exporter.configured")
 
 
 @when_all("leadership.is_leader", "endpoint.dashboards.joined")
@@ -173,7 +189,7 @@ def register_grafana_dashboards():
         hookenv.log(
             "register_grafana_dashboard: pushed {}, digest {}".format(dash_file, digest)
         )
-        set_state("apt-exporter.dashboard-registered")
+        set_flag("apt-exporter.dashboard-registered")
 
 
 def update_dashboards_from_resource():
