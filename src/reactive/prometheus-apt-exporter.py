@@ -35,14 +35,12 @@ def install_packages():
     hookenv.status_set("maintenance", "Installing software")
     config = hookenv.config()
     channel = config.get("snap_channel")
-    port_number = config.get("port")
     snap.install(SNAP_NAME, channel=channel, force_dangerous=False)
     subprocess.check_call(
         ["snap", "connect", "prometheus-apt-exporter:host-apt-contents"]
     )
     set_http_port()
     hookenv.status_set("active", "Exporter installed and connected")
-    hookenv.open_port(port_number)
     set_flag("apt-exporter.installed")
 
 
@@ -88,8 +86,13 @@ def snap_channel_changed():
 @when("config.changed.port")
 def set_http_port():
     """Set the port config of the snap to reflect the charm config."""
+    for opened_port in hookenv.opened_ports():
+        hookenv.close_port(
+            opened_port.split("/")[0]
+        )  # Each value has format: '8089/tcp'
     config = hookenv.config()
     port_number = config.get("port")
+    hookenv.open_port(port_number)
     subprocess.check_call(
         ["snap", "set", "prometheus-apt-exporter", f"ports.http={port_number}"]
     )
@@ -119,6 +122,7 @@ def prometheus_changed():
 
 @when("nrpe-external-master.available")
 @when_not("apt-exporter.configured")
+@when("config.changed.port")
 def update_nrpe_config(svc):
     """Configure the nrpe check for the service."""
     if not os.path.exists("/var/lib/nagios"):
